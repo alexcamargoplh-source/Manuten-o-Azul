@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Manutenções Azul</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Export Libraries: SheetJS (XLSX) & jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    .bg-azul-header { background-color: #1a2332; }
+    .bg-azul-card { background-color: #f8fafc; }
+    .nav-tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800 min-h-screen flex flex-col">
+
+  <!-- ================= TELA DE LOGIN ================= -->
+  <section id="view-login" class="flex-1 flex items-center justify-center p-4 bg-slate-900">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-gray-200">
+      
+      <!-- LOGO / CABEÇALHO LOGIN -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center bg-blue-600 text-white font-black text-2xl px-4 py-2 rounded-xl mb-3 shadow-md">
+          AZUL
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800">Controle de Manutenções</h1>
+        <p class="text-xs text-gray-500 mt-1">Informe seu usuário para acessar o sistema</p>
+      </div>
+
+      <!-- MENSAGEM DE ERRO -->
+      <div id="login-error" class="hidden mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-xs rounded-lg flex items-center gap-2">
+        <i class="fa-solid fa-circle-exclamation text-base"></i>
+        <span>Usuário não encontrado. Tente novamente.</span>
+      </div>
+
+      <!-- FORMULÁRIO DE LOGIN -->
+      <form onsubmit="handleLogin(event)" class="space-y-5">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Usuário</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3 top-3 text-gray-400 text-sm"></i>
+            <input type="text" id="login-username" required placeholder="Digite seu usuário..." class="pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2 text-sm">
+          <i class="fa-solid fa-right-to-bracket"></i> Entrar no Sistema
+        </button>
+      </form>
+
+      <!-- BOTÕES DE ATALHO PARA TESTE -->
+      <div class="mt-8 pt-6 border-t border-gray-200">
+        <p class="text-[11px] font-semibold text-gray-400 uppercase text-center mb-3">Acesso Rápido</p>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="fillLogin('admin')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-2 rounded font-medium border border-gray-300 flex items-center justify-center gap-1">
+            <i class="fa-solid fa-user-shield text-blue-600"></i> Admin
+          </button>
+          <button onclick="fillLogin('mecanico')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-2 rounded font-medium border border-gray-300 flex items-center justify-center gap-1">
+            <i class="fa-solid fa-wrench text-amber-600"></i> Mecânico
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ================= APLICAÇÃO PRINCIPAL (PÓS-LOGIN) ================= -->
+  <div id="app-dashboard" class="hidden min-h-screen flex flex-col">
+
+    <!-- NAVBAR SUPERIOR -->
+    <header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20">
+      <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+        <div class="flex items-center space-x-3">
+          <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-xl">AZUL</div>
+          <span class="text-xl font-bold text-gray-800">Controle de Manutenções</span>
+        </div>
+        
+        <div class="flex items-center space-x-4">
+          <!-- USUÁRIO LOGADO -->
+          <div class="flex items-center space-x-3 border-l border-gray-200 pl-4">
+            <div class="text-right hidden sm:block">
+              <p id="user-display-name" class="text-xs font-bold text-gray-800">Administrador</p>
+              <p id="user-display-role" class="text-[10px] text-gray-500 uppercase">Acesso Total</p>
+            </div>
+            <button onclick="handleLogout()" title="Sair do Sistema" class="text-gray-400 hover:text-red-600 p-2 text-base transition">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- MENU DE NAVEGAÇÃO SUPERIOR -->
+      <nav class="bg-gray-50 border-t border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 flex space-x-6 text-sm font-medium">
+          <button onclick="switchMainTab('manutencao')" id="mainTab-manutencao" class="py-3 px-2 nav-tab-active">
+            MANUTENÇÃO
+          </button>
+          <button onclick="switchMainTab('cadastro')" id="mainTab-cadastro" class="py-3 px-2 text-gray-600 hover:text-blue-600">
+            CADASTRO / FROTA
+          </button>
+          <button onclick="switchMainTab('multas')" id="mainTab-multas" class="py-3 px-2 text-gray-600 hover:text-blue-600">
+            MULTAS
+          </button>
+          <button onclick="switchMainTab('sinistros')" id="mainTab-sinistros" class="py-3 px-2 text-gray-600 hover:text-blue-600">
+            SINISTROS
+          </button>
+          <button onclick="switchMainTab('relatorio')" id="mainTab-relatorio" class="py-3 px-2 text-gray-600 hover:text-blue-600">
+            RELATÓRIO
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
+
+      <!-- VIEW 1: MANUTENÇÃO (LISTA DE CAMINHÕES) -->
+      <section id="view-manutencao" class="block space-y-6">
+        
+        <!-- CARDS RESUMO -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+            <div class="p-3 bg-blue-100 text-blue-600 rounded-lg"><i class="fa-solid fa-truck text-2xl"></i></div>
+            <div>
+              <p class="text-xs text-gray-500 font-semibold uppercase">Total da Frota</p>
+              <p id="stat-total" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+            <div class="p-3 bg-green-100 text-green-600 rounded-lg"><i class="fa-solid fa-circle-check text-2xl"></i></div>
+            <div>
+              <p class="text-xs text-gray-500 font-semibold uppercase">Em Dia</p>
+              <p id="stat-ok" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+            <div class="p-3 bg-amber-100 text-amber-600 rounded-lg"><i class="fa-solid fa-triangle-exclamation text-2xl"></i></div>
+            <div>
+              <p class="text-xs text-gray-500 font-semibold uppercase">Próximo da Revisão</p>
+              <p id="stat-alerta" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center space-x-4">
+            <div class="p-3 bg-red-100 text-red-600 rounded-lg"><i class="fa-solid fa-circle-xmark text-2xl"></i></div>
+            <div>
+              <p class="text-xs text-gray-500 font-semibold uppercase">Vencidos / Atrasados</p>
+              <p id="stat-vencido" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- BARRA DE FERRAMENTAS -->
+        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+          <div class="flex items-center space-x-2 w-full md:w-auto">
+            <div class="relative w-full md:w-80">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
+              <input type="text" id="search-truck" oninput="renderTruckList()" placeholder="Buscar placa, código ou modelo..." class="pl-9 pr-4 py-2 border border-gray-300 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <select id="filter-status" onchange="renderTruckList()" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">Todos os Status</option>
+              <option value="ok">Em Dia</option>
+              <option value="alerta">Atenção</option>
+              <option value="vencido">Vencido</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- TABELA DE FROTA -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-gray-600 uppercase text-xs border-b border-gray-200">
+                <tr>
+                  <th class="px-4 py-3">Código / Placa</th>
+                  <th class="px-4 py-3">Modelo</th>
+                  <th class="px-4 py-3">Regra de Revisão</th>
+                  <th class="px-4 py-3">Leitura Atual</th>
+                  <th class="px-4 py-3">Última Revisão</th>
+                  <th class="px-4 py-3">Próxima Revisão Em</th>
+                  <th class="px-4 py-3">Faltam</th>
+                  <th class="px-4 py-3 text-center">Situação</th>
+                  <th class="px-4 py-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="truck-table-body" class="divide-y divide-gray-200">
+                <!-- Renderizado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: CADASTRO / EDIÇÃO DA FROTA -->
+      <section id="view-cadastro" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+            <div>
+              <h2 class="text-xl font-bold text-gray-800">Cadastro e Edição de Veículos da Frota</h2>
+              <p class="text-sm text-gray-500">Configure a regra de revisão (500h, 600h ou KM) e o valor atual de cada caminhão.</p>
+            </div>
+            <button onclick="openTruckFormModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 shadow-sm">
+              <i class="fa-solid fa-plus"></i> Novo Caminhão
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-gray-600 uppercase text-xs border-b border-gray-200">
+                <tr>
+                  <th class="px-4 py-3">Código</th>
+                  <th class="px-4 py-3">Placa</th>
+                  <th class="px-4 py-3">Modelo</th>
+                  <th class="px-4 py-3">Filial</th>
+                  <th class="px-4 py-3">Periodicidade / Regra</th>
+                  <th class="px-4 py-3">Leitura Atual</th>
+                  <th class="px-4 py-3 text-center">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="cad-table-body" class="divide-y divide-gray-200">
+                <!-- Renderizado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEWS SECUNDÁRIAS -->
+      <section id="view-multas" class="hidden bg-white p-8 rounded-xl border border-gray-200 text-center">
+        <h2 class="text-lg font-bold">Módulo de Multas</h2>
+      </section>
+
+      <section id="view-sinistros" class="hidden bg-white p-8 rounded-xl border border-gray-200 text-center">
+        <h2 class="text-lg font-bold">Módulo de Sinistros</h2>
+      </section>
+
+      <!-- VIEW RELATÓRIOS (EXCEL E PDF) -->
+      <section id="view-relatorio" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-gray-200 gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-gray-800">Relatório da Frota e Histórico de Manutenções</h2>
+              <p class="text-sm text-gray-500">Gere e baixe arquivos formatados em Excel (.xlsx) ou PDF contendo os horímetros/odômetros, previsões e histórico completo.</p>
+            </div>
+            
+            <!-- BOTOES DE DOWNLOAD -->
+            <div class="flex flex-wrap gap-3">
+              <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition">
+                <i class="fa-solid fa-file-excel text-lg"></i> Baixar em Excel (.xlsx)
+              </button>
+              <button onclick="exportToPDF()" class="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-sm transition">
+                <i class="fa-solid fa-file-pdf text-lg"></i> Baixar em PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- FILTROS DO RELATÓRIO -->
+          <div class="py-4 border-b border-gray-100 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex items-center gap-3">
+              <label class="text-xs font-semibold text-gray-600">Filtrar Situação:</label>
+              <select id="report-filter-status" onchange="renderReportTable()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500">
+                <option value="all">Toda a Frota</option>
+                <option value="ok">Apenas Em Dia</option>
+                <option value="alerta">Apenas em Atenção</option>
+                <option value="vencido">Apenas Vencidos</option>
+              </select>
+            </div>
+            <div class="text-xs text-gray-500">
+              Total de Veículos no Relatório: <strong id="report-count" class="text-gray-800">0</strong>
+            </div>
+          </div>
+
+          <!-- PRÉ-VISUALIZAÇÃO DA TABELA DO RELATÓRIO -->
+          <div class="mt-6 space-y-6">
+            <div>
+              <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-blue-600"></i> Status Geral das Revisões da Frota
+              </h3>
+              <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-gray-100 text-gray-700 font-bold uppercase border-b border-gray-200">
+                    <tr>
+                      <th class="p-3">Cód. / Placa</th>
+                      <th class="p-3">Modelo</th>
+                      <th class="p-3">Filial</th>
+                      <th class="p-3">Regra</th>
+                      <th class="p-3">Leitura Atual</th>
+                      <th class="p-3">Última Revisão</th>
+                      <th class="p-3">Próxima Revisão</th>
+                      <th class="p-3">Faltam</th>
+                      <th class="p-3 text-center">Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="report-table-body" class="divide-y divide-gray-200">
+                    <!-- Gerado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- PRÉ-VISUALIZAÇÃO DO HISTÓRICO -->
+            <div>
+              <h3 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Histórico Consolidado de Intervenções
+              </h3>
+              <div class="overflow-x-auto rounded-lg border border-gray-200 max-h-80 overflow-y-auto">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-gray-100 text-gray-700 font-bold uppercase border-b border-gray-200 sticky top-0 bg-gray-100">
+                    <tr>
+                      <th class="p-3">Data</th>
+                      <th class="p-3">Veículo</th>
+                      <th class="p-3">Descrição / Serviço</th>
+                      <th class="p-3">Tipo</th>
+                      <th class="p-3">Leitura no Ato</th>
+                      <th class="p-3">Mecânico / Resp.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="report-history-table-body" class="divide-y divide-gray-200">
+                    <!-- Gerado por JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: SITUAÇÃO DO PLANO -->
+  <div id="modal-plano" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-lg shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col border border-gray-300">
+      
+      <!-- CABEÇALHO DO MODAL -->
+      <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-2xl font-light tracking-wide text-red-500 uppercase">SITUAÇÃO DO PLANO</h3>
+        <button onclick="closeModalPlano()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+      </div>
+
+      <!-- CORPO DO MODAL -->
+      <div class="p-6 bg-gray-50 flex-1">
+        
+        <!-- NOME E DADOS DO CAMINHÃO SELECIONADO -->
+        <div class="mb-4 bg-white p-3 rounded border border-gray-200 flex justify-between items-center text-sm">
+          <div>
+            <span class="font-bold text-gray-700" id="modal-truck-title">CAMINHÃO CB121 - MLT-4E20</span>
+            <span class="text-xs text-gray-500 ml-2" id="modal-truck-branch">(Santa Catarina)</span>
+          </div>
+        </div>
+
+        <!-- CONTAINER DA TABELA -->
+        <div class="bg-white rounded border border-gray-300 overflow-hidden shadow-sm">
+          
+          <!-- ABAS DO MODAL -->
+          <div class="flex border-b border-gray-200 bg-gray-100 text-xs font-bold uppercase text-gray-600">
+            <button onclick="switchModalTab('ativos')" id="modalTab-ativos" class="px-6 py-3 bg-white text-gray-800 border-t-2 border-blue-600">ITENS ATIVOS</button>
+            <button onclick="switchModalTab('historico')" id="modalTab-historico" class="px-6 py-3 hover:bg-gray-200">HISTÓRICO DE ITENS</button>
+            <button onclick="switchModalTab('inativos')" id="modalTab-inativos" class="px-6 py-3 hover:bg-gray-200">ITENS INATIVOS</button>
+          </div>
+
+          <!-- TABELA DE ITENS ATIVOS -->
+          <div id="modalView-ativos" class="p-4 overflow-x-auto">
+            
+            <div class="flex justify-between items-center mb-3">
+              <div class="flex items-center space-x-2 text-xs">
+                <span class="font-semibold text-gray-600">Filtrar Tipo:</span>
+                <button onclick="filterModalType('ALL')" id="typeBtn-ALL" class="px-2 py-1 rounded bg-blue-600 text-white font-medium">Todos</button>
+                <button onclick="filterModalType('PREVENTIVA')" id="typeBtn-PREVENTIVA" class="px-2 py-1 rounded bg-gray-200 text-gray-700">Preventivas</button>
+                <button onclick="filterModalType('CORRETIVA')" id="typeBtn-CORRETIVA" class="px-2 py-1 rounded bg-gray-200 text-gray-700">Corretivas</button>
+              </div>
+              
+              <button onclick="openAddMaintenanceModal()" class="text-xs bg-green-600 hover:bg-green-700 text-white font-semibold px-3 py-1.5 rounded flex items-center gap-1 shadow-sm">
+                <i class="fa-solid fa-plus"></i> Nova Manutenção
+              </button>
+            </div>
+
+            <table class="w-full text-left text-xs">
+              <thead class="text-gray-700 font-bold border-b border-gray-300">
+                <tr>
+                  <th class="py-2 px-2">DESCRIÇÃO</th>
+                  <th class="py-2 px-2">TIPO</th>
+                  <th class="py-2 px-2">VALOR ATUAL</th>
+                  <th class="py-2 px-2">PRÓXIMA MANUTENÇÃO COM...</th>
+                  <th class="py-2 px-2">FALTAM</th>
+                  <th class="py-2 px-2 text-center">SITUAÇÃO</th>
+                  <th class="py-2 px-2 text-center">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="modal-table-body" class="divide-y divide-gray-200 text-gray-700">
+                <!-- Preenchido dinamicamente via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- TABELA HISTÓRICO -->
+          <div id="modalView-historico" class="p-4 hidden text-xs">
+            <table class="w-full text-left">
+              <thead class="font-bold border-b border-gray-300">
+                <tr>
+                  <th class="py-2">Data Realização</th>
+                  <th class="py-2">Descrição</th>
+                  <th class="py-2">Tipo</th>
+                  <th class="py-2">Leitura na Revisão</th>
+                  <th class="py-2">Mecânico / Resp.</th>
+                </tr>
+              </thead>
+              <tbody id="modal-history-body" class="divide-y divide-gray-200">
+                <!-- Registros do histórico -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- TABELA INATIVOS -->
+          <div id="modalView-inativos" class="p-4 hidden text-xs text-gray-500 italic">
+            Nenhum item inativo para este caminhão.
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RODAPÉ DO MODAL -->
+      <div class="px-6 py-3 border-t border-gray-200 bg-white flex justify-end">
+        <button onclick="closeModalPlano()" class="border border-gray-300 text-gray-600 px-6 py-1.5 rounded text-sm hover:bg-gray-100 uppercase tracking-wider font-semibold">
+          FECHAR
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL SECUNDÁRIO: REGISTRAR REVISÃO/MANUTENÇÃO -->
+  <div id="modal-baixa" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200">
+      <h3 class="text-lg font-bold text-gray-800 mb-1" id="baixa-title">Registrar Manutenção</h3>
+      <p class="text-xs text-gray-500 mb-4" id="baixa-subtitle">Informe a data e os detalhes da revisão efetuada.</p>
+
+      <form id="form-baixa" onsubmit="confirmarBaixaManutencao(event)" class="space-y-4 text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Manutenção</label>
+          <select id="baixa-tipo" class="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50 font-medium">
+            <option value="PREVENTIVA">PREVENTIVA (Reinicia o ciclo)</option>
+            <option value="CORRETIVA">CORRETIVA (Reparo pontual / emergencial)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Data da Realização</label>
+          <input type="date" id="baixa-data" required class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1" id="baixa-reading-label">Leitura Atual no Registro</label>
+          <input type="number" id="baixa-horimetro" required class="w-full border border-gray-300 rounded px-3 py-2 font-bold text-gray-700" placeholder="Ex: 921">
+          <span class="text-[10px] text-gray-400">Informe a leitura atual do horímetro/odômetro.</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Mecânico / Responsável</label>
+          <input type="text" id="baixa-mecanico" required placeholder="Nome do mecânico" class="w-full border border-gray-300 rounded px-3 py-2">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Observações / Serviços Realizados</label>
+          <textarea id="baixa-obs" rows="2" placeholder="Troca de óleo, filtros, etc..." class="w-full border border-gray-300 rounded px-3 py-2 text-xs"></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2 border-t">
+          <button type="button" onclick="closeModalBaixa()" class="px-4 py-2 border rounded text-xs font-medium text-gray-600 hover:bg-gray-100">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium">Salvar e Concluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CADASTRAR / EDITAR CAMINHÃO -->
+  <div id="modal-truck-form" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200">
+      <h3 class="text-lg font-bold text-gray-800 mb-1" id="truck-form-title">Cadastrar / Editar Caminhão</h3>
+      <p class="text-xs text-gray-500 mb-4">Insira os dados do veículo, tipo de ciclo e leitura atual.</p>
+
+      <form id="form-truck" onsubmit="saveTruckForm(event)" class="space-y-4 text-sm">
+        <input type="hidden" id="edit-truck-id">
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Código Interno</label>
+          <input type="text" id="truck-code" required placeholder="Ex: CB125" class="w-full border border-gray-300 rounded px-3 py-2">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Placa do Veículo</label>
+          <input type="text" id="truck-plate" required placeholder="Ex: ABC-1234" class="w-full border border-gray-300 rounded px-3 py-2 uppercase">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Modelo / Descrição</label>
+          <input type="text" id="truck-model" required placeholder="Ex: VW Constellation 26.280" class="w-full border border-gray-300 rounded px-3 py-2">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Filial / Unidade</label>
+          <select id="truck-branch" class="w-full border border-gray-300 rounded px-3 py-2">
+            <option value="Santa Catarina">Santa Catarina</option>
+            <option value="Paraná">Paraná</option>
+            <option value="Porto Belo">Porto Belo</option>
+          </select>
+        </div>
+
+        <!-- CAMPO DE REGRA / PERIODICIDADE -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Periodicidade da Revisão</label>
+          <select id="truck-rule-type" onchange="toggleCustomRuleInput()" class="w-full border border-gray-300 rounded px-3 py-2 font-medium">
+            <option value="500H">A cada 500 Horas (Horímetro)</option>
+            <option value="600H">A cada 600 Horas (Horímetro)</option>
+            <option value="CUSTOM_H">Outro valor em Horas (Personalizado)</option>
+            <option value="KM">Por Quilometragem (KM)</option>
+          </select>
+        </div>
+
+        <div id="container-custom-value" class="hidden">
+          <label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-custom-val">Intervalo Personalizado</label>
+          <input type="number" id="truck-custom-interval" min="1" placeholder="Ex: 250 ou 10000" class="w-full border border-gray-300 rounded px-3 py-2">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1" id="lbl-truck-reading">Leitura Atual (Horas ou KM)</label>
+          <input type="number" id="truck-hours" required min="0" placeholder="Ex: 921" class="w-full border border-gray-300 rounded px-3 py-2 font-bold text-blue-600">
+          <span class="text-[10px] text-gray-400">Defina o valor atual do hodômetro/horímetro para contagem.</span>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2 border-t">
+          <button type="button" onclick="closeTruckFormModal()" class="px-4 py-2 border rounded text-xs font-medium text-gray-600 hover:bg-gray-100">Cancelar</button>
+          <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium">Salvar Veículo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SCRIPT JS DE LÓGICA E AUTENTICAÇÃO -->
+  <script>
+    const usersDB = {
+      "admin": { name: "Alex Sander", role: "Administrador", access: "ALL" },
+      "mecanico": { name: "Oficina Mecânica", role: "Mecânico Operacional", access: "LIMITED" }
+    };
+
+    let currentUser = null;
+
+    let trucks = [
+      {
+        id: "26283",
+        codigo: "CB121",
+        placa: "MLT-4E20",
+        modelo: "VW 26.280 CRM",
+        filial: "Santa Catarina",
+        regraTipo: "500H",
+        cicloIntervalo: 500,
+        unidadeMedida: "Horas",
+        leituraAtual: 921,
+        ultimaRevisao: 747,
+        historico: [
+          { data: "2026-08-10", descricao: "Manutenção Básica (500h)", tipo: "PREVENTIVA", leitura: 747, mecanico: "Carlos Silva" },
+          { data: "2026-03-15", descricao: "Troca de Pastilhas de Freio", tipo: "CORRETIVA", leitura: 480, mecanico: "Oficina Central" }
+        ],
+        manutencoesAtivas: [
+          { id: 101, descricao: "Manutenção Básica", tipo: "PREVENTIVA", ultimaRevisaoLeitura: 747 }
+        ]
+      },
+      {
+        id: "26284",
+        codigo: "CB122",
+        placa: "RLA-2B10",
+        modelo: "MB Atron 2729",
+        filial: "Santa Catarina",
+        regraTipo: "600H",
+        cicloIntervalo: 600,
+        unidadeMedida: "Horas",
+        leituraAtual: 1450,
+        ultimaRevisao: 1200,
+        historico: [
+          { data: "2026-07-01", descricao: "Troca Filtro de Ar", tipo: "CORRETIVA", leitura: 1200, mecanico: "João Pedro" },
+          { data: "2026-01-20", descricao: "Revisão Preventiva (600h)", tipo: "PREVENTIVA", leitura: 600, mecanico: "Carlos Silva" }
+        ],
+        manutencoesAtivas: [
+          { id: 102, descricao: "Manutenção Preventiva Padrão", tipo: "PREVENTIVA", ultimaRevisaoLeitura: 1200 },
+          { id: 103, descricao: "Ajuste do Freio Motor", tipo: "CORRETIVA", ultimaRevisaoLeitura: 1400 }
+        ]
+      },
+      {
+        id: "26285",
+        codigo: "CB123",
+        placa: "QIJ-9812",
+        modelo: "Volvo VM 330",
+        filial: "Paraná",
+        regraTipo: "KM",
+        cicloIntervalo: 10000,
+        unidadeMedida: "KM",
+        leituraAtual: 45200,
+        ultimaRevisao: 38000,
+        historico: [
+          { data: "2026-05-18", descricao: "Troca do Óleo do Motor e Filtros", tipo: "PREVENTIVA", leitura: 38000, mecanico: "Marcos Lima" }
+        ],
+        manutencoesAtivas: [
+          { id: 104, descricao: "Revisão Geral por Quilometragem", tipo: "PREVENTIVA", ultimaRevisaoLeitura: 38000 }
+        ]
+      }
+    ];
+
+    let selectedTruckId = null;
+    let selectedMaintenanceId = null;
+    let currentModalTypeFilter = 'ALL';
+
+    function fillLogin(u) {
+      document.getElementById("login-username").value = u;
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById("login-username").value.trim().toLowerCase();
+
+      if (usersDB[u]) {
+        currentUser = usersDB[u];
+        document.getElementById("login-error").classList.add("hidden");
+        
+        document.getElementById("view-login").classList.add("hidden");
+        document.getElementById("app-dashboard").classList.remove("hidden");
+
+        document.getElementById("user-display-name").innerText = currentUser.name;
+        document.getElementById("user-display-role").innerText = currentUser.role;
+
+        const cadBtn = document.getElementById("mainTab-cadastro");
+        if (currentUser.access === "LIMITED") {
+          cadBtn.classList.add("hidden");
+        } else {
+          cadBtn.classList.remove("hidden");
+        }
+
+        renderTruckList();
+        renderCadastroList();
+        renderReportTable();
+      } else {
+        document.getElementById("login-error").classList.remove("hidden");
+      }
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      document.getElementById("app-dashboard").classList.add("hidden");
+      document.getElementById("view-login").classList.remove("hidden");
+    }
+
+    function switchMainTab(tabName) {
+      document.querySelectorAll("nav button").forEach(btn => {
+        btn.classList.remove("nav-tab-active");
+        btn.classList.add("text-gray-600");
+      });
+      document.getElementById(`mainTab-${tabName}`).classList.add("nav-tab-active");
+      document.getElementById(`mainTab-${tabName}`).classList.remove("text-gray-600");
+
+      document.querySelectorAll("main > section").forEach(sec => sec.classList.add("hidden"));
+      document.getElementById(`view-${tabName}`).classList.remove("hidden");
+
+      if (tabName === 'cadastro') {
+        renderCadastroList();
+      } else if (tabName === 'relatorio') {
+        renderReportTable();
+      }
+    }
+
+    function renderTruckList() {
+      const tbody = document.getElementById("truck-table-body");
+      const search = document.getElementById("search-truck").value.toLowerCase();
+      const filterStatus = document.getElementById("filter-status").value;
+
+      tbody.innerHTML = "";
+
+      let totalCount = 0;
+      let okCount = 0;
+      let alertaCount = 0;
+      let vencidoCount = 0;
+
+      trucks.forEach(t => {
+        const prevMain = t.manutencoesAtivas.find(m => m.tipo === "PREVENTIVA") || { ultimaRevisaoLeitura: t.ultimaRevisao };
+        const proxima = prevMain.ultimaRevisaoLeitura + t.cicloIntervalo;
+        const faltam = proxima - t.leituraAtual;
+
+        const alertaThreshold = t.unidadeMedida === 'KM' ? 1000 : 50;
+
+        let statusClass = "ok";
+        if (faltam <= 0) statusClass = "vencido";
+        else if (faltam <= alertaThreshold) statusClass = "alerta";
+
+        totalCount++;
+        if (statusClass === "ok") okCount++;
+        if (statusClass === "alerta") alertaCount++;
+        if (statusClass === "vencido") vencidoCount++;
+
+        const matchSearch = t.codigo.toLowerCase().includes(search) || t.placa.toLowerCase().includes(search) || t.modelo.toLowerCase().includes(search);
+        const matchStatus = filterStatus === "all" || filterStatus === statusClass;
+
+        if (matchSearch && matchStatus) {
+          let badgeStatus = `<span class="text-green-600 font-bold flex justify-center items-center gap-1"><i class="fa-solid fa-circle-check"></i> Em Dia</span>`;
+          if (statusClass === "alerta") badgeStatus = `<span class="text-amber-500 font-bold flex justify-center items-center gap-1"><i class="fa-solid fa-triangle-exclamation animate-bounce"></i> Atenção</span>`;
+          if (statusClass === "vencido") badgeStatus = `<span class="text-red-600 font-bold flex justify-center items-center gap-1"><i class="fa-solid fa-circle-xmark"></i> Vencido</span>`;
+
+          let labelRegra = `A cada ${t.cicloIntervalo} ${t.unidadeMedida}`;
+
+          const row = `
+            <tr class="hover:bg-gray-50 transition-colors border-b border-gray-100">
+              <td class="px-4 py-3 font-semibold text-gray-800">${t.codigo} <span class="text-xs text-gray-500 block font-normal">${t.placa}</span></td>
+              <td class="px-4 py-3 text-gray-600">${t.modelo}</td>
+              <td class="px-4 py-3 font-medium text-blue-700"><span class="bg-blue-50 px-2 py-1 rounded border border-blue-200 text-xs">${labelRegra}</span></td>
+              <td class="px-4 py-3 font-bold text-gray-900">${t.leituraAtual} ${t.unidadeMedida}</td>
+              <td class="px-4 py-3 text-gray-600">${prevMain.ultimaRevisaoLeitura} ${t.unidadeMedida}</td>
+              <td class="px-4 py-3 text-blue-700 font-semibold">${proxima} ${t.unidadeMedida}</td>
+              <td class="px-4 py-3 font-bold ${faltam <= 0 ? 'text-red-600' : (faltam <= alertaThreshold ? 'text-amber-600' : 'text-gray-800')}">${faltam} ${t.unidadeMedida}</td>
+              <td class="px-4 py-3 text-center">${badgeStatus}</td>
+              <td class="px-4 py-3 text-center">
+                <button onclick="openModalPlano('${t.id}')" title="Ver Situação do Plano" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-200 text-xs font-semibold flex items-center gap-1 mx-auto">
+                  <i class="fa-solid fa-eye"></i> Plano
+                </button>
+              </td>
+            </tr>
+          `;
+          tbody.innerHTML += row;
+        }
+      });
+
+      document.getElementById("stat-total").innerText = totalCount;
+      document.getElementById("stat-ok").innerText = okCount;
+      document.getElementById("stat-alerta").innerText = alertaCount;
+      document.getElementById("stat-vencido").innerText = vencidoCount;
+    }
+
+    function renderCadastroList() {
+      const tbody = document.getElementById("cad-table-body");
+      tbody.innerHTML = "";
+
+      trucks.forEach(t => {
+        let labelRegra = `A cada ${t.cicloIntervalo} ${t.unidadeMedida}`;
+        const row = `
+          <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 font-bold text-gray-800">${t.codigo}</td>
+            <td class="px-4 py-3 font-semibold text-blue-600">${t.placa}</td>
+            <td class="px-4 py-3 text-gray-600">${t.modelo}</td>
+            <td class="px-4 py-3 text-gray-600">${t.filial}</td>
+            <td class="px-4 py-3 font-medium text-gray-700">${labelRegra}</td>
+            <td class="px-4 py-3 font-bold text-gray-800">${t.leituraAtual} ${t.unidadeMedida}</td>
+            <td class="px-4 py-3 text-center">
+              <button onclick="editTruck('${t.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs font-medium border border-gray-300">
+                <i class="fa-solid fa-pen-to-square"></i> Editar
+              </button>
+            </td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    /* ===================================================
+       LÓGICA DA ABA RELATÓRIO & EXPORTAÇÃO (EXCEL E PDF)
+       =================================================== */
+
+    function getProcessedFleetData(statusFilter = "all") {
+      let result = [];
+      trucks.forEach(t => {
+        const prevMain = t.manutencoesAtivas.find(m => m.tipo === "PREVENTIVA") || { ultimaRevisaoLeitura: t.ultimaRevisao };
+        const proxima = prevMain.ultimaRevisaoLeitura + t.cicloIntervalo;
+        const faltam = proxima - t.leituraAtual;
+        const alertaThreshold = t.unidadeMedida === 'KM' ? 1000 : 50;
+
+        let statusText = "Em Dia";
+        let statusKey = "ok";
+
+        if (faltam <= 0) {
+          statusText = "Vencido";
+          statusKey = "vencido";
+        } else if (faltam <= alertaThreshold) {
+          statusText = "Atenção";
+          statusKey = "alerta";
+        }
+
+        if (statusFilter === "all" || statusFilter === statusKey) {
+          result.push({
+            ...t,
+            ultimaRevisaoLeitura: prevMain.ultimaRevisaoLeitura,
+            proximaRevisao: proxima,
+            faltam: faltam,
+            statusText: statusText,
+            statusKey: statusKey
+          });
+        }
+      });
+      return result;
+    }
+
+    function renderReportTable() {
+      const filter = document.getElementById("report-filter-status") ? document.getElementById("report-filter-status").value : "all";
+      const data = getProcessedFleetData(filter);
+      
+      const tbodyFleet = document.getElementById("report-table-body");
+      const tbodyHistory = document.getElementById("report-history-table-body");
+      
+      if (!tbodyFleet || !tbodyHistory) return;
+
+      tbodyFleet.innerHTML = "";
+      tbodyHistory.innerHTML = "";
+
+      document.getElementById("report-count").innerText = data.length;
+
+      data.forEach(t => {
+        let badge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">Em Dia</span>`;
+        if (t.statusKey === "alerta") badge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Atenção</span>`;
+        if (t.statusKey === "vencido") badge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">Vencido</span>`;
+
+        tbodyFleet.innerHTML += `
+          <tr class="hover:bg-gray-50">
+            <td class="p-3 font-semibold text-gray-800">${t.codigo} <span class="text-gray-500 font-normal">(${t.placa})</span></td>
+            <td class="p-3 text-gray-600">${t.modelo}</td>
+            <td class="p-3 text-gray-600">${t.filial}</td>
+            <td class="p-3 font-medium text-gray-700">${t.cicloIntervalo} ${t.unidadeMedida}</td>
+            <td class="p-3 font-bold text-gray-900">${t.leituraAtual} ${t.unidadeMedida}</td>
+            <td class="p-3 text-gray-600">${t.ultimaRevisaoLeitura} ${t.unidadeMedida}</td>
+            <td class="p-3 font-semibold text-blue-700">${t.proximaRevisao} ${t.unidadeMedida}</td>
+            <td class="p-3 font-bold ${t.faltam <= 0 ? 'text-red-600' : 'text-gray-800'}">${t.faltam} ${t.unidadeMedida}</td>
+            <td class="p-3 text-center">${badge}</td>
+          </tr>
+        `;
+
+        if (t.historico && t.historico.length > 0) {
+          t.historico.forEach(h => {
+            tbodyHistory.innerHTML += `
+              <tr class="hover:bg-gray-50">
+                <td class="p-3 font-medium text-gray-700">${h.data}</td>
+                <td class="p-3 font-bold text-gray-800">${t.codigo} - ${t.placa}</td>
+                <td class="p-3 text-gray-700">${h.descricao}</td>
+                <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${h.tipo === 'PREVENTIVA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${h.tipo}</span></td>
+                <td class="p-3 font-semibold text-gray-800">${h.leitura} ${t.unidadeMedida}</td>
+                <td class="p-3 text-gray-600">${h.mecanico}</td>
+              </tr>
+            `;
+          });
+        }
+      });
+
+      if (tbodyHistory.children.length === 0) {
+        tbodyHistory.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400 italic">Nenhum registro de histórico encontrado para os veículos selecionados.</td></tr>`;
+      }
+    }
+
+    function exportToExcel() {
+      const filter = document.getElementById("report-filter-status").value;
+      const fleetData = getProcessedFleetData(filter);
+
+      const fleetSheetData = fleetData.map(t => ({
+        "Código Interno": t.codigo,
+        "Placa": t.placa,
+        "Modelo": t.modelo,
+        "Filial": t.filial,
+        "Regra / Intervalo": `${t.cicloIntervalo} ${t.unidadeMedida}`,
+        "Leitura Atual": t.leituraAtual,
+        "Última Revisão": t.ultimaRevisaoLeitura,
+        "Próxima Revisão": t.proximaRevisao,
+        "Faltam para Próxima": t.faltam,
+        "Unidade": t.unidadeMedida,
+        "Situação": t.statusText
+      }));
+
+      const historySheetData = [];
+      fleetData.forEach(t => {
+        if (t.historico && t.historico.length > 0) {
+          t.historico.forEach(h => {
+            historySheetData.push({
+              "Data": h.data,
+              "Código Veículo": t.codigo,
+              "Placa Veículo": t.placa,
+              "Modelo": t.modelo,
+              "Descrição do Serviço": h.descricao,
+              "Tipo Manutenção": h.tipo,
+              "Leitura no Registro": h.leitura,
+              "Unidade": t.unidadeMedida,
+              "Mecânico / Responsável": h.mecanico
+            });
+          });
+        }
+      });
+
+      const wb = XLSX.utils.book_new();
+      
+      const wsFleet = XLSX.utils.json_to_sheet(fleetSheetData);
+      XLSX.utils.book_append_sheet(wb, wsFleet, "Status Frota");
+
+      const wsHistory = XLSX.utils.json_to_sheet(historySheetData.length > 0 ? historySheetData : [{"Info": "Nenhum histórico registrado"}]);
+      XLSX.utils.book_append_sheet(wb, wsHistory, "Histórico Manutenções");
+
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(wb, `Relatorio_Frota_Manutencao_Azul_${today}.xlsx`);
+    }
+
+    function exportToPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+      const filter = document.getElementById("report-filter-status").value;
+      const fleetData = getProcessedFleetData(filter);
+      const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+      doc.setFillColor(26, 35, 50);
+      doc.rect(0, 0, 297, 24, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("AZUL CONTROLE DE MANUTENÇÕES", 14, 12);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Relatório Geral da Frota - Emissão: ${dataHoje}`, 14, 18);
+
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("1. Status Atual da Frota e Próximas Revisões", 14, 32);
+
+      const fleetRows = fleetData.map(t => [
+        t.codigo,
+        t.placa,
+        t.modelo,
+        t.filial,
+        `${t.cicloIntervalo} ${t.unidadeMedida}`,
+        `${t.leituraAtual} ${t.unidadeMedida}`,
+        `${t.ultimaRevisaoLeitura} ${t.unidadeMedida}`,
+        `${t.proximaRevisao} ${t.unidadeMedida}`,
+        `${t.faltam} ${t.unidadeMedida}`,
+        t.statusText
+      ]);
+
+      doc.autoTable({
+        startY: 36,
+        head: [['Código', 'Placa', 'Modelo', 'Filial', 'Regra', 'Leitura Atual', 'Últ. Revisão', 'Próx. Revisão', 'Faltam', 'Situação']],
+        body: fleetRows,
+        theme: 'striped',
+        headStyles: { fillStyle: 'F', fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 },
+        alternateRowStyles: { fillColor: [248, 250, 252] }
+      });
+
+      let currentY = doc.lastAutoTable.finalY + 12;
+
+      if (currentY > 160) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("2. Histórico Consolidado de Manutenções Realizadas", 14, currentY);
+
+      const historyRows = [];
+      fleetData.forEach(t => {
+        if (t.historico && t.historico.length > 0) {
+          t.historico.forEach(h => {
+            historyRows.push([
+              h.data,
+              `${t.codigo} (${t.placa})`,
+              h.descricao,
+              h.tipo,
+              `${h.leitura} ${t.unidadeMedida}`,
+              h.mecanico
+            ]);
+          });
+        }
+      });
+
+      doc.autoTable({
+        startY: currentY + 4,
+        head: [['Data', 'Veículo', 'Descrição do Serviço', 'Tipo', 'Leitura no Ato', 'Mecânico / Resp.']],
+        body: historyRows.length > 0 ? historyRows : [['-', '-', 'Nenhum histórico disponível', '-', '-', '-']],
+        theme: 'grid',
+        headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 }
+      });
+
+      const filenameDate = new Date().toISOString().split('T')[0];
+      doc.save(`Relatorio_Frota_Manutencao_Azul_${filenameDate}.pdf`);
+    }
+
+    function openModalPlano(truckId) {
+      selectedTruckId = truckId;
+      const truck = trucks.find(t => t.id === truckId);
+
+      document.getElementById("modal-truck-title").innerText = `CAMINHÃO ${truck.codigo} - ${truck.placa}`;
+      document.getElementById("modal-truck-branch").innerText = `(${truck.filial} - Regra: ${truck.cicloIntervalo} ${truck.unidadeMedida})`;
+      
+      renderModalTable();
+      renderModalHistory();
+
+      document.getElementById("modal-plano").classList.remove("hidden");
+    }
+
+    function closeModalPlano() {
+      document.getElementById("modal-plano").classList.add("hidden");
+    }
+
+    function switchModalTab(tab) {
+      ['ativos', 'historico', 'inativos'].forEach(t => {
+        document.getElementById(`modalTab-${t}`).className = "px-6 py-3 hover:bg-gray-200 text-gray-600";
+        document.getElementById(`modalView-${t}`).classList.add("hidden");
+      });
+
+      document.getElementById(`modalTab-${tab}`).className = "px-6 py-3 bg-white text-gray-800 border-t-2 border-blue-600 font-bold";
+      document.getElementById(`modalView-${tab}`).classList.remove("hidden");
+    }
+
+    function filterModalType(type) {
+      currentModalTypeFilter = type;
+      ['ALL', 'PREVENTIVA', 'CORRETIVA'].forEach(t => {
+        const btn = document.getElementById(`typeBtn-${t}`);
+        if (t === type) {
+          btn.className = "px-2 py-1 rounded bg-blue-600 text-white font-medium";
+        } else {
+          btn.className = "px-2 py-1 rounded bg-gray-200 text-gray-700";
+        }
+      });
+      renderModalTable();
+    }
+
+    function renderModalTable() {
+      const truck = trucks.find(t => t.id === selectedTruckId);
+      const tbody = document.getElementById("modal-table-body");
+      tbody.innerHTML = "";
+
+      let items = truck.manutencoesAtivas;
+      if (currentModalTypeFilter !== 'ALL') {
+        items = items.filter(i => i.tipo === currentModalTypeFilter);
+      }
+
+      if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-gray-400 italic">Nenhum item de manutenção encontrado neste filtro.</td></tr>`;
+        return;
+      }
+
+      items.forEach(m => {
+        const isPreventiva = m.tipo === "PREVENTIVA";
+        const proximaCom = isPreventiva ? (m.ultimaRevisaoLeitura + truck.cicloIntervalo) : "N/A (Corretiva)";
+        const faltam = isPreventiva ? (proximaCom - truck.leituraAtual) : "N/A";
+
+        const alertaThreshold = truck.unidadeMedida === 'KM' ? 1000 : 50;
+
+        let iconeSitua = `<i class="fa-solid fa-circle-check text-green-500 text-lg"></i>`;
+        if (isPreventiva && faltam <= 0) {
+          iconeSitua = `<i class="fa-solid fa-circle-exclamation text-red-500 text-lg animate-pulse"></i>`;
+        } else if (isPreventiva && faltam <= alertaThreshold) {
+          iconeSitua = `<i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg"></i>`;
+        }
+
+        const row = `
+          <tr class="border-b border-gray-100 hover:bg-gray-50">
+            <td class="py-3 px-2 font-semibold text-gray-800">${m.descricao} (${truck.cicloIntervalo} ${truck.unidadeMedida})</td>
+            <td class="py-3 px-2 font-bold ${m.tipo === 'PREVENTIVA' ? 'text-blue-600' : 'text-purple-600'}">
+              <span class="px-2 py-0.5 rounded text-[10px] ${m.tipo === 'PREVENTIVA' ? 'bg-blue-100' : 'bg-purple-100'}">${m.tipo}</span>
+            </td>
+            <td class="py-3 px-2 font-bold">${truck.leituraAtual} ${truck.unidadeMedida}</td>
+            <td class="py-3 px-2">${isPreventiva ? proximaCom + ' ' + truck.unidadeMedida : 'Ajuste Pontual'}</td>
+            <td class="py-3 px-2 font-bold ${isPreventiva && faltam <= 0 ? 'text-red-600' : 'text-gray-800'}">${isPreventiva ? faltam + ' ' + truck.unidadeMedida : '-'}</td>
+            <td class="py-3 px-2 text-center">${iconeSitua}</td>
+            <td class="py-3 px-2 text-center space-x-1">
+              <button onclick="openModalBaixa('${m.id}')" title="Concluir/Registrar Manutenção" class="text-blue-600 hover:text-blue-800 p-1">
+                <i class="fa-solid fa-check text-base"></i>
+              </button>
+              <button onclick="openModalBaixa('${m.id}')" title="Dar Baixa com Mecânico" class="text-green-600 hover:text-green-800 p-1">
+                <i class="fa-solid fa-wrench text-base"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function renderModalHistory() {
+      const truck = trucks.find(t => t.id === selectedTruckId);
+      const tbody = document.getElementById("modal-history-body");
+      tbody.innerHTML = "";
+
+      if (truck.historico.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-400 italic">Nenhuma revisão efetuada anteriormente.</td></tr>`;
+        return;
+      }
+
+      truck.historico.forEach(h => {
+        const row = `
+          <tr>
+            <td class="py-2">${h.data}</td>
+            <td class="py-2 font-semibold">${h.descricao}</td>
+            <td class="py-2"><span class="px-1.5 py-0.5 rounded text-[10px] ${h.tipo === 'PREVENTIVA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${h.tipo}</span></td>
+            <td class="py-2 font-bold">${h.leitura} ${truck.unidadeMedida}</td>
+            <td class="py-2">${h.mecanico}</td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function openModalBaixa(maintId) {
+      selectedMaintenanceId = maintId;
+      const truck = trucks.find(t => t.id === selectedTruckId);
+      const maint = truck.manutencoesAtivas.find(m => m.id == maintId);
+
+      document.getElementById("baixa-title").innerText = `Baixa: ${maint.descricao}`;
+      document.getElementById("baixa-reading-label").innerText = `Leitura Atual no Registro (${truck.unidadeMedida})`;
+      document.getElementById("baixa-horimetro").value = truck.leituraAtual;
+      document.getElementById("baixa-tipo").value = maint.tipo;
+      document.getElementById("baixa-data").value = new Date().toISOString().split('T')[0];
+
+      document.getElementById("modal-baixa").classList.remove("hidden");
+    }
+
+    function closeModalBaixa() {
+      document.getElementById("modal-baixa").classList.add("hidden");
+    }
+
+    function confirmarBaixaManutencao(e) {
+      e.preventDefault();
+      const truck = trucks.find(t => t.id === selectedTruckId);
+      const maint = truck.manutencoesAtivas.find(m => m.id == selectedMaintenanceId);
+
+      const tipo = document.getElementById("baixa-tipo").value;
+      const data = document.getElementById("baixa-data").value;
+      const mecanico = document.getElementById("baixa-mecanico").value;
+      const obs = document.getElementById("baixa-obs").value;
+      const leituraInformada = parseInt(document.getElementById("baixa-horimetro").value);
+
+      truck.leituraAtual = Math.max(truck.leituraAtual, leituraInformada);
+
+      truck.historico.unshift({
+        data: data,
+        descricao: maint.descricao + (obs ? ` (${obs})` : ""),
+        tipo: tipo,
+        leitura: truck.leituraAtual,
+        mecanico: mecanico
+      });
+
+      if (tipo === "PREVENTIVA") {
+        maint.ultimaRevisaoLeitura = truck.leituraAtual;
+        truck.ultimaRevisao = truck.leituraAtual;
+      }
+
+      closeModalBaixa();
+      renderModalTable();
+      renderModalHistory();
+      renderTruckList();
+      renderReportTable();
+
+      alert(`Manutenção gravada com sucesso! ${tipo === 'PREVENTIVA' ? 'O ciclo de revisão foi reiniciado.' : ''}`);
+    }
+
+    function toggleCustomRuleInput() {
+      const ruleType = document.getElementById("truck-rule-type").value;
+      const container = document.getElementById("container-custom-value");
+      const lblCustom = document.getElementById("lbl-custom-val");
+      const lblReading = document.getElementById("lbl-truck-reading");
+
+      if (ruleType === "CUSTOM_H") {
+        container.classList.remove("hidden");
+        lblCustom.innerText = "Intervalo Personalizado (Horas)";
+        lblReading.innerText = "Leitura Atual (Horímetro - Horas)";
+      } else if (ruleType === "KM") {
+        container.classList.remove("hidden");
+        lblCustom.innerText = "Intervalo Personalizado (KM - ex: 10000)";
+        lblReading.innerText = "Leitura Atual (Hodômetro - KM)";
+      } else {
+        container.classList.add("hidden");
+        lblReading.innerText = "Leitura Atual (Horímetro - Horas)";
+      }
+    }
+
+    function openTruckFormModal() {
+      document.getElementById("edit-truck-id").value = "";
+      document.getElementById("truck-code").value = "";
+      document.getElementById("truck-plate").value = "";
+      document.getElementById("truck-model").value = "";
+      document.getElementById("truck-rule-type").value = "500H";
+      document.getElementById("truck-hours").value = "";
+      document.getElementById("truck-custom-interval").value = "";
+      document.getElementById("truck-form-title").innerText = "Cadastrar Novo Caminhão";
+
+      toggleCustomRuleInput();
+      document.getElementById("modal-truck-form").classList.remove("hidden");
+    }
+
+    function editTruck(truckId) {
+      const t = trucks.find(x => x.id === truckId);
+      document.getElementById("edit-truck-id").value = t.id;
+      document.getElementById("truck-code").value = t.codigo;
+      document.getElementById("truck-plate").value = t.placa;
+      document.getElementById("truck-model").value = t.modelo;
+      document.getElementById("truck-branch").value = t.filial;
+      document.getElementById("truck-rule-type").value = t.regraTipo;
+      document.getElementById("truck-custom-interval").value = t.cicloIntervalo;
+      document.getElementById("truck-hours").value = t.leituraAtual;
+      document.getElementById("truck-form-title").innerText = `Editar Caminhão - ${t.codigo}`;
+
+      toggleCustomRuleInput();
+      document.getElementById("modal-truck-form").classList.remove("hidden");
+    }
+
+    function closeTruckFormModal() {
+      document.getElementById("modal-truck-form").classList.add("hidden");
+    }
+
+    function saveTruckForm(e) {
+      e.preventDefault();
+      const id = document.getElementById("edit-truck-id").value;
+      const code = document.getElementById("truck-code").value;
+      const plate = document.getElementById("truck-plate").value.toUpperCase();
+      const model = document.getElementById("truck-model").value;
+      const branch = document.getElementById("truck-branch").value;
+      const ruleType = document.getElementById("truck-rule-type").value;
+      const reading = parseInt(document.getElementById("truck-hours").value);
+
+      let interval = 500;
+      let unit = "Horas";
+
+      if (ruleType === "500H") {
+        interval = 500;
+        unit = "Horas";
+      } else if (ruleType === "600H") {
+        interval = 600;
+        unit = "Horas";
+      } else if (ruleType === "CUSTOM_H") {
+        interval = parseInt(document.getElementById("truck-custom-interval").value) || 500;
+        unit = "Horas";
+      } else if (ruleType === "KM") {
+        interval = parseInt(document.getElementById("truck-custom-interval").value) || 10000;
+        unit = "KM";
+      }
+
+      if (id) {
+        const t = trucks.find(x => x.id === id);
+        t.codigo = code;
+        t.placa = plate;
+        t.modelo = model;
+        t.filial = branch;
+        t.regraTipo = ruleType;
+        t.cicloIntervalo = interval;
+        t.unidadeMedida = unit;
+        t.leituraAtual = reading;
+      } else {
+        const newId = Date.now().toString();
+        trucks.push({
+          id: newId,
+          codigo: code,
+          placa: plate,
+          modelo: model,
+          filial: branch,
+          regraTipo: ruleType,
+          cicloIntervalo: interval,
+          unidadeMedida: unit,
+          leituraAtual: reading,
+          ultimaRevisao: reading,
+          historico: [],
+          manutencoesAtivas: [
+            { id: Date.now(), descricao: "Manutenção Preventiva Padrão", tipo: "PREVENTIVA", ultimaRevisaoLeitura: reading }
+          ]
+        });
+      }
+
+      closeTruckFormModal();
+      renderTruckList();
+      renderCadastroList();
+      renderReportTable();
+      alert("Dados do veículo salvos com sucesso!");
+    }
+
+    function openAddMaintenanceModal() {
+      const truck = trucks.find(t => t.id === selectedTruckId);
+      const desc = prompt("Informe a descrição do novo item de manutenção:", "Troca de Pastilhas / Freios");
+      if (!desc) return;
+
+      const tipo = confirm("Trata-se de uma Manutenção PREVENTIVA? Clique em OK para Preventiva ou Cancelar para Corretiva.") ? "PREVENTIVA" : "CORRETIVA";
+
+      truck.manutencoesAtivas.push({
+        id: Date.now(),
+        descricao: desc,
+        tipo: tipo,
+        ultimaRevisaoLeitura: truck.leituraAtual
+      });
+
+      renderModalTable();
+    }
+  </script>
+</body>
+</html>
